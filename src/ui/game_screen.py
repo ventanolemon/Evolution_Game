@@ -1,8 +1,16 @@
 """
 Игровой экран с поддержкой специальных клеток.
+
+Изменения (v2):
+  — arcade.Camera2D для рендера поля (game_camera) и HUD (ui_camera);
+    при проигрыше камера трясётся, создавая эффект удара.
+  — arcade.check_for_collision_with_list для определения плиток,
+    стоящих на специальных клетках: эмиттит «ауру» частиц каждые
+    0.5 с пока плитка остаётся на эффектной клетке.
 """
 import os
 import math
+import random
 import arcade
 
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
@@ -17,6 +25,13 @@ from src.game.map_loader import MapConfig, DEFAULT_MAP
 from src.ui.hud import draw_hud, draw_game_over_overlay
 from src.ui.win_screen import WinOverlay
 
+# Константы тряски камеры
+_SHAKE_DURATION  = 0.45   # секунд
+_SHAKE_AMPLITUDE = 9.0    # пикселей (начальная амплитуда)
+_SHAKE_DECAY     = 22.0   # px/сек убывания амплитуды
+
+# Интервал «ауры» частиц от collide-проверки (сек)
+_AURA_INTERVAL   = 0.5
 
 # Загружаем текстуры клеток один раз
 _cell_textures: dict[CellType, arcade.Texture] = {}
@@ -45,7 +60,6 @@ class GameView(arcade.View):
         self.board:     GameBoard      = None   # type: ignore
         self.particles: ParticleSystem = ParticleSystem()
 
-        # Спрайты клеток пересоздаются в setup() при каждом reset()
         self._cell_sprites: arcade.SpriteList = arcade.SpriteList()
 
         self._sounds: dict[str, arcade.Sound] = {}
@@ -53,6 +67,20 @@ class GameView(arcade.View):
 
         self._win_overlay: WinOverlay | None = None
         self._notif_queue: list[list] = []
+
+        # ── Камеры ────────────────────────────────────────────
+        # game_camera — для игрового поля, может трястись
+        # ui_camera   — для HUD и оверлеев, всегда стабильна
+        self._game_camera = arcade.Camera2D()
+        self._ui_camera   = arcade.Camera2D()
+
+        # Состояние тряски
+        self._shake_timer:     float = 0.0
+        self._shake_amplitude: float = 0.0
+        self._was_game_over:   bool  = False
+
+        # Счётчик для collide-проверки «ауры»
+        self._aura_timer: float = 0.0
 
     # ── Setup ─────────────────────────────────────────────────
 
@@ -70,6 +98,18 @@ class GameView(arcade.View):
         self._win_overlay = None
         self._notif_queue.clear()
 
+        # Сбрасываем тряску и флаги
+        self._shake_timer     = 0.0
+        self._shake_amplitude = 0.0
+        self._was_game_over   = False
+        self._aura_timer      = 0.0
+
+        # Обнуляем позиции камер
+        cx = SCREEN_WIDTH  / 2
+        cy = SCREEN_HEIGHT / 2
+        self._game_camera.position = (cx, cy)
+        self._ui_camera.position   = (cx, cy)
+
     def _rebuild_cell_sprites(self) -> None:
         """Перестраивает спрайты клеток на основе текущего состояния _cells."""
         self._cell_sprites = arcade.SpriteList()
@@ -84,8 +124,9 @@ class GameView(arcade.View):
                 scale = (self._layout.tile_size * 0.85) / max(tex.width, tex.height, 1)
                 sp = arcade.Sprite(tex, scale=scale)
                 sp.center_x, sp.center_y = self._layout.cell_center(r, c)
-                sp.row, sp.col = r, c
-                sp.cell_type    = ct
+                sp.row       = r
+                sp.col       = c
+                sp.cell_type = ct
                 self._cell_sprites.append(sp)
 
     def _load_sounds(self) -> None:
@@ -105,7 +146,8 @@ class GameView(arcade.View):
 
     def _play_sound(self, name: str, volume: float = 0.5) -> None:
         s = self._sounds.get(name)
-        if s: arcade.play_sound(s, volume=volume)
+        if s:
+            arcade.play_sound(s, volume=volume)
 
     # ── Жизненный цикл ────────────────────────────────────────
 
@@ -116,11 +158,28 @@ class GameView(arcade.View):
 
     def on_draw(self) -> None:
         self.clear()
+
+        # Применяем тряску к game_camera (HUD-камера не затронута)
+        if self._shake_timer > 0:
+            dx = random.uniform(-self._shake_amplitude, self._shake_amplitude)
+            dy = random.uniform(-self._shake_amplitude, self._shake_amplitude)
+            self._game_camera.position = (
+                SCREEN_WIDTH  / 2 + dx,
+                SCREEN_HEIGHT / 2 + dy,
+            )
+        else:
+            self._game_camera.position = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+
+        # ── Игровое поле (через game_camera) ──────────────────
+        self._game_camera.use()
         self._draw_grid()
-        self._cell_sprites.draw()        # клетки ПОД тайлами
+        self._cell_sprites.draw()
         self.board.tiles.draw()
         self._draw_tile_overlays()
         self.particles.draw()
+
+        # ── HUD и оверлеи (через стабильную ui_camera) ────────
+        self._ui_camera.use()
         draw_hud(self.board.score, self.board.timer,
                  self._mode_cfg, self._music_on,
                  map_name=self._map_cfg.name)
@@ -135,14 +194,12 @@ class GameView(arcade.View):
         lay = self._layout
         gx, gy = lay.origin_x, lay.origin_y
 
-        # Фоновая подложка под всю сетку
         arcade.draw_lrbt_rectangle_filled(
             gx - 4, gx + lay.grid_w + 4,
             gy - lay.grid_h - 4, gy + 4,
             COLORS["grid_bg"],
         )
 
-        # Отдельно затемняем клетки-стены (визуальная граница сегментов)
         for r in range(lay.rows):
             for c in range(lay.cols):
                 if self.board._cells[r][c] == CellType.WALL:
@@ -190,7 +247,8 @@ class GameView(arcade.View):
         cx = SCREEN_WIDTH // 2
         y  = SCREEN_HEIGHT // 2 + 80
         for item in self._notif_queue[:3]:
-            ach = item[0]; t = item[1]
+            ach = item[0]
+            t   = item[1]
             alpha = max(0, int(255 * min(1.0, min(t, self.NOTIF_DURATION - t) * 4)))
             arcade.draw_lrbt_rectangle_filled(
                 cx - 190, cx + 190, y - 22, y + 22,
@@ -207,8 +265,10 @@ class GameView(arcade.View):
 
     def on_update(self, dt: float) -> None:
         b = self.board
+
         if self._win_overlay:
             self._win_overlay.update(dt)
+
         b.session_time += dt
 
         if not b.won and not b.game_over:
@@ -217,30 +277,53 @@ class GameView(arcade.View):
             b._try_finish_move()
             self.particles.update(dt)
 
-            # События клеточных эффектов — превращаем в частицы + ребилд клеток
+            # События клеточных эффектов → частицы + ребилд
             if b.cell_events:
                 for ev in b.cell_events:
                     color = {
-                        "fire":    (240, 90, 40),
-                        "upgrade": (80, 220, 100),
-                        "degrade": (220, 80, 80),
+                        "fire":    (240, 90,  40),
+                        "upgrade": (80,  220, 100),
+                        "degrade": (220, 80,  80),
                     }.get(ev["type"], (200, 200, 200))
                     self.particles.emit(ev["x"], ev["y"], color, count=18)
                 b.cell_events.clear()
-                self._rebuild_cell_sprites()   # клетки использовались → перестроить
+                self._rebuild_cell_sprites()
 
+            # Таймер режима
             if self._mode_cfg.initial_time > 0:
                 b.timer -= dt
                 if b.timer <= 0.0:
-                    b.timer        = 0.0
-                    b.game_over    = True
-                    b.lose_reason  = "time"
+                    b.timer       = 0.0
+                    b.game_over   = True
+                    b.lose_reason = "time"
                     self._play_sound("lose", 0.6)
 
+            # ── collide: «аура» частиц для плиток на спецклетках ──
+            # arcade.check_for_collision_with_list определяет, какая
+            # плитка пересекается с каким спрайтом спецклетки,
+            # и периодически эмиттит соответствующие частицы-ауры.
+            self._aura_timer += dt
+            if self._aura_timer >= _AURA_INTERVAL and self._cell_sprites:
+                self._aura_timer = 0.0
+                self._emit_cell_aura()
+
+            # Достижения
             if int(b.session_time * 10) % 20 == 0:
                 for a in ach_manager.check(b):
                     self._notif_queue.append([a, self.NOTIF_DURATION])
 
+        # ── Проигрыш → тряска камеры ──────────────────────────
+        if b.game_over and not self._was_game_over:
+            self._was_game_over   = True
+            self._shake_timer     = _SHAKE_DURATION
+            self._shake_amplitude = _SHAKE_AMPLITUDE
+
+        # Убываем амплитуду тряски
+        if self._shake_timer > 0:
+            self._shake_timer     -= dt
+            self._shake_amplitude  = max(0.0, self._shake_amplitude - _SHAKE_DECAY * dt)
+
+        # ── Победа → WinOverlay ───────────────────────────────
         if b.won and self._win_overlay is None:
             self._win_overlay = WinOverlay(b.score)
             ach_manager.check(b)
@@ -251,6 +334,31 @@ class GameView(arcade.View):
             item[1] -= dt
         self._notif_queue = [x for x in self._notif_queue if x[1] > 0]
 
+    def _emit_cell_aura(self) -> None:
+        """
+        Использует arcade.check_for_collision_with_list чтобы найти
+        плитки, стоящие прямо сейчас на специальных клетках, и создаёт
+        небольшое «свечение» из частиц — визуальная подсказка игроку.
+        """
+        _AURA_COLORS: dict[CellType, tuple] = {
+            CellType.FIRE:    (240, 90,  40),
+            CellType.UPGRADE: (80,  220, 100),
+            CellType.DEGRADE: (220, 80,  80),
+        }
+        for tile in self.board.tiles:
+            if tile._marked_for_removal or tile.is_moving:
+                continue
+            # Проверяем коллизию этой плитки со всеми спрайтами клеток
+            hits = arcade.check_for_collision_with_list(tile, self._cell_sprites)
+            for cell_sp in hits:
+                ct = getattr(cell_sp, "cell_type", None)
+                color = _AURA_COLORS.get(ct)
+                if color:
+                    self.particles.emit(
+                        tile.center_x, tile.center_y,
+                        color, count=4,
+                    )
+
     # ── Управление ────────────────────────────────────────────
 
     def on_key_press(self, key, modifiers) -> None:
@@ -259,27 +367,35 @@ class GameView(arcade.View):
             self._music_on = not self._music_on
             return
         if self._win_overlay:
-            if key == arcade.key.R:     self.setup()
-            elif key == arcade.key.ESCAPE: self._after_game()
+            if key == arcade.key.R:
+                self.setup()
+            elif key == arcade.key.ESCAPE:
+                self._after_game()
             return
         if b.game_over:
-            if key == arcade.key.R:     self.setup()
-            elif key == arcade.key.ESCAPE: self._after_game()
+            if key == arcade.key.R:
+                self.setup()
+            elif key == arcade.key.ESCAPE:
+                self._after_game()
             return
         if key == arcade.key.ESCAPE:
             self._go_menu()
             return
         dirs = {
-            arcade.key.LEFT:"left", arcade.key.RIGHT:"right",
-            arcade.key.UP:"up", arcade.key.DOWN:"down",
+            arcade.key.LEFT:  "left",
+            arcade.key.RIGHT: "right",
+            arcade.key.UP:    "up",
+            arcade.key.DOWN:  "down",
         }
         if key in dirs and not b.input_locked:
             b.move_direction(dirs[key])
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if self._win_overlay:
-            if self._win_overlay.btn_new_hit(x, y):  self.setup()
-            elif self._win_overlay.btn_menu_hit(x, y): self._after_game()
+            if self._win_overlay.btn_new_hit(x, y):
+                self.setup()
+            elif self._win_overlay.btn_menu_hit(x, y):
+                self._after_game()
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
         if self._win_overlay:
@@ -292,9 +408,9 @@ class GameView(arcade.View):
         from src.ui.start_screen import StartView
         self.window.show_view(
             NameEntryView(
-                score        = self.board.score,
-                mode_str     = self._mode_cfg.mode.value,
-                duration_sec = self.board.session_time,
+                score           = self.board.score,
+                mode_str        = self._mode_cfg.mode.value,
+                duration_sec    = self.board.session_time,
                 on_done_factory = lambda: StartView(),
             )
         )

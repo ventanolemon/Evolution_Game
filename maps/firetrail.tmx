@@ -3,7 +3,7 @@
  <properties>
   <property name="id" value="firetrail"/>
   <property name="name" value="Огненная тропа"/>
-  <property name="description" value="Осторожно: огонь уничтожает плитки"/>
+  <property name="description" value="Огонь уничтожает плитки"/>
  </properties>
  <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
  <layer id="1" name="cells" width="4" height="4">

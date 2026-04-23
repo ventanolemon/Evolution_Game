@@ -3,7 +3,7 @@
  <properties>
   <property name="id" value="corridor"/>
   <property name="name" value="Коридор"/>
-  <property name="description" value="Узкое 3×6 — продумывай каждый ход"/>
+  <property name="description" value="Узкая— продумывай каждый ход"/>
  </properties>
  <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
  <layer id="1" name="cells" width="6" height="3">

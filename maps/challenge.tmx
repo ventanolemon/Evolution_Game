@@ -3,7 +3,7 @@
  <properties>
   <property name="id" value="challenge"/>
   <property name="name" value="Испытание"/>
-  <property name="description" value="Стены, огонь, апгрейд, деградация — всё сразу"/>
+  <property name="description" value="Всё, везде и сразу"/>
  </properties>
  <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
  <layer id="1" name="cells" width="6" height="6">

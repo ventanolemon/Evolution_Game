@@ -3,7 +3,7 @@
  <properties>
   <property name="id" value="boost_garden"/>
   <property name="name" value="Сад эволюции"/>
-  <property name="description" value="Апгрейдеры помогают быстро продвинуться"/>
+  <property name="description" value="Апгрейдеры улучшают"/>
  </properties>
  <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
  <layer id="1" name="cells" width="5" height="5">

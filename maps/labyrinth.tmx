@@ -3,7 +3,7 @@
  <properties>
   <property name="id" value="labyrinth"/>
   <property name="name" value="Лабиринт"/>
-  <property name="description" value="Стены делят поле на изолированные секции"/>
+  <property name="description" value="Стены делят поле"/>
  </properties>
  <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
  <layer id="1" name="cells" width="5" height="5">
