@@ -1,11 +1,8 @@
-"""Система частиц для визуальных эффектов слияния."""
 import random
 import arcade
 
 
 class Particle:
-    """Одна светящаяся частица."""
-
     def __init__(self, x: float, y: float, color: tuple):
         self.x = x
         self.y = y
@@ -37,13 +34,10 @@ class Particle:
 
 
 class ParticleSystem:
-    """Управляет пулом частиц."""
-
     def __init__(self):
         self._particles: list[Particle] = []
 
     def emit(self, x: float, y: float, color: tuple, count: int = 12) -> None:
-        """Создаёт `count` частиц в точке (x, y)."""
         for _ in range(count):
             self._particles.append(Particle(x, y, color))
 

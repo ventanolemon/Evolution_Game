@@ -1,27 +1,14 @@
-"""
-Экран ввода имени игрока после окончания партии.
-Использует on_text() — правильный способ ввода текста в arcade.
-"""
 import arcade
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS, BTN_W, BTN_H
-from src.ui.widgets import Panel, Button, draw_rounded_rect
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
+from src.ui.widgets import Panel, Button
 from src.utils.save_manager import manager as save_manager
 
 
 class NameEntryView(arcade.View):
-    """
-    Показывается после game_over/won.
-    Принимает имя, сохраняет счёт, переходит на следующий экран.
-    """
-
     MAX_LEN = 20
 
     def __init__(self, score: int, mode_str: str,
                  duration_sec: float, on_done_factory):
-        """
-        on_done_factory — callable без аргументов,
-        возвращающий arcade.View для перехода после сохранения.
-        """
         super().__init__()
         self.score        = score
         self.mode_str     = mode_str
@@ -41,12 +28,8 @@ class NameEntryView(arcade.View):
         self._btn_skip = Button(cx, cy - 115, "Пропустить",
                                 color_key="btn_neutral", font_size=14)
 
-    # ── Жизненный цикл ────────────────────────────────────────
-
     def on_show_view(self) -> None:
         arcade.set_background_color(COLORS["background"])
-
-    # ── Отрисовка ─────────────────────────────────────────────
 
     def on_draw(self) -> None:
         self.clear()
@@ -87,15 +70,11 @@ class NameEntryView(arcade.View):
                          cx, 18, COLORS["text_gray"], 11,
                          anchor_x="center", anchor_y="center")
 
-    # ── Обновление ────────────────────────────────────────────
-
     def on_update(self, _dt: float) -> None:
         self._blink = (self._blink + 1) % 60
 
-    # ── Ввод ──────────────────────────────────────────────────
 
     def on_text(self, text: str) -> None:
-        """Arcade вызывает on_text для каждого введённого символа."""
         if len(self.name) < self.MAX_LEN and text.isprintable():
             self.name += text
 
@@ -117,7 +96,6 @@ class NameEntryView(arcade.View):
         self._btn_save.on_mouse_motion(x, y)
         self._btn_skip.on_mouse_motion(x, y)
 
-    # ── Внутренние ────────────────────────────────────────────
 
     def _do_save(self) -> None:
         name = self.name.strip() or "Игрок"

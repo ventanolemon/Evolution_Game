@@ -1,16 +1,14 @@
-"""Типы специальных клеток на игровом поле."""
 from enum import Enum
 
 
 class CellType(Enum):
-    EMPTY   = "empty"      # обычная проходимая клетка
-    WALL    = "wall"       # непроходимая — разрывает линию сдвига
-    FIRE    = "fire"       # уничтожает плитку, остановившуюся на ней (одноразово)
-    UPGRADE = "upgrade"    # повышает стадию плитки на 1 (одноразово)
-    DEGRADE = "degrade"    # понижает стадию плитки на 1 (одноразово; 0 → уничтожение)
+    EMPTY   = "empty"
+    WALL    = "wall"
+    FIRE    = "fire"
+    UPGRADE = "upgrade"
+    DEGRADE = "degrade"
 
 
-# Путь к спрайту каждого типа (None — ничего не рисуем)
 CELL_SPRITES: dict[CellType, str | None] = {
     CellType.EMPTY:   None,
     CellType.WALL:    "assets/cells/wall.png",

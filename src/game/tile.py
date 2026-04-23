@@ -1,7 +1,3 @@
-"""
-Плитка-спрайт эволюции.
-Принимает GridLayout вместо глобальных констант.
-"""
 import os
 import arcade
 
@@ -12,8 +8,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.game.grid_layout import GridLayout
 
-
-# ── Загрузка текстур ──────────────────────────────────────────
 
 def _load_textures() -> list[arcade.Texture]:
     textures: list[arcade.Texture] = []
@@ -35,11 +29,7 @@ def _load_textures() -> list[arcade.Texture]:
 EVOLUTION_TEXTURES: list[arcade.Texture] = _load_textures()
 
 
-# ── Плитка ────────────────────────────────────────────────────
-
 class EvolutionTile(arcade.Sprite):
-    """Плитка с анимациями движения, спавна и слияния."""
-
     def __init__(self, stage_index: int, row: int, col: int,
                  layout: "GridLayout",
                  animate_spawn: bool = True):
@@ -69,8 +59,6 @@ class EvolutionTile(arcade.Sprite):
 
         self.center_x, self.center_y = layout.cell_center(row, col)
 
-    # ── Движение ──────────────────────────────────────────────
-
     def start_move_to(self, row: int, col: int) -> None:
         if self.row == row and self.col == col:
             return
@@ -78,31 +66,23 @@ class EvolutionTile(arcade.Sprite):
         self.is_moving = True
         self.progress  = 0.0
 
-    # ── Эволюция ──────────────────────────────────────────────
-
     def on_merge(self) -> None:
         self.merge_effect = True
         self.merge_timer  = 25
 
     def _apply_stage_change(self) -> None:
-        """Обновить текстуру/размер/цвет после изменения stage_index."""
         new_tex      = EVOLUTION_TEXTURES[self.stage_index]
         self.texture = new_tex
         self.scale   = (self._layout.tile_size * 0.75) / max(new_tex.width, new_tex.height, 1)
         self.bg_color = BG_COLORS[self.stage_index % len(BG_COLORS)]
 
     def upgrade(self) -> None:
-        """Повышает стадию на 1."""
         if self.stage_index < len(EVOLUTION_TEXTURES) - 1:
             self.stage_index += 1
             self._apply_stage_change()
             self.on_merge()
 
     def degrade(self) -> bool:
-        """
-        Понижает стадию на 1. Возвращает True если плитку НУЖНО уничтожить
-        (уже была на стадии 0 — некуда понижать).
-        """
         if self.stage_index == 0:
             return True
         self.stage_index -= 1
@@ -113,14 +93,10 @@ class EvolutionTile(arcade.Sprite):
     def can_merge_with(self, other: "EvolutionTile") -> bool:
         return self.stage_index == other.stage_index and not self.merge_effect
 
-    # ── Ключ ──────────────────────────────────────────────────
-
     def get_key(self) -> str:
         if self.is_moving:
             return f"{self.trow}{self.tcol}"
         return f"{self.row}{self.col}"
-
-    # ── Обновление ────────────────────────────────────────────
 
     def update(self, delta_time: float = 1 / 60) -> None:
         if self.spawn_anim:

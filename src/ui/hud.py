@@ -1,4 +1,3 @@
-"""HUD — отрисовка интерфейса поверх игрового поля."""
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS, HUD_TOP
 from src.game.modes import ModeConfig
@@ -6,7 +5,6 @@ from src.game.modes import ModeConfig
 
 def draw_hud(score: int, timer: float, mode_cfg: ModeConfig,
              music_on: bool, map_name: str = "") -> None:
-    # Полоса HUD
     arcade.draw_lrbt_rectangle_filled(
         0, SCREEN_WIDTH,
         SCREEN_HEIGHT - HUD_TOP, SCREEN_HEIGHT,
@@ -21,7 +19,6 @@ def draw_hud(score: int, timer: float, mode_cfg: ModeConfig,
                      COLORS["text_dark"], 17, bold=True,
                      anchor_y="center")
 
-    # В центре — режим и карта
     accent = COLORS.get(mode_cfg.accent_color, COLORS["btn_primary"])
     arcade.draw_text(f"{mode_cfg.emoji} {mode_cfg.label}",
                      SCREEN_WIDTH // 2, SCREEN_HEIGHT - 14,
@@ -47,7 +44,7 @@ def draw_hud(score: int, timer: float, mode_cfg: ModeConfig,
                      anchor_x="center", anchor_y="center")
 
 
-def draw_game_over_overlay(won: bool, lose_reason: str, score: int) -> None:
+def draw_game_over_overlay(lose_reason: str, score: int) -> None:
     cx = SCREEN_WIDTH  // 2
     cy = SCREEN_HEIGHT // 2
     arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,

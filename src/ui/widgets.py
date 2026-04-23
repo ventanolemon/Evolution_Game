@@ -1,19 +1,9 @@
-"""
-Переиспользуемые UI-виджеты для всех экранов.
-
-Button  — прямоугольная кнопка с hover-эффектом.
-Panel   — фоновая панель с тенью.
-Label   — текстовая метка через arcade.Text (быстрее draw_text).
-"""
 import arcade
 from config import COLORS, BTN_W, BTN_H
 
 
-# ── Вспомогательная: рисует «скруглённый» прямоугольник ──────────
-# Arcade не имеет встроенного rounded_rect, имитируем 3-слойным методом.
 def draw_rounded_rect(cx: float, cy: float, w: float, h: float,
                       color: tuple, r: int = 6) -> None:
-    """Рисует прямоугольник с псевдо-скруглёнными углами."""
     l, b, rt, t = cx - w/2, cy - h/2, cx + w/2, cy + h/2
     arcade.draw_lrbt_rectangle_filled(l + r, rt - r, b,     t,     color)
     arcade.draw_lrbt_rectangle_filled(l,     rt,     b + r, t - r, color)
@@ -32,19 +22,7 @@ def draw_rounded_rect_outline(cx: float, cy: float, w: float, h: float,
     arcade.draw_line(rt, b + r, rt, t - r,  color, lw)
 
 
-# ── Button ────────────────────────────────────────────────────────
-
 class Button:
-    """
-    Кнопка с hover-состоянием.
-
-    Пример:
-        btn = Button(cx, cy, "Старт", color_key="btn_primary")
-        # В on_mouse_motion:   btn.on_mouse_motion(x, y)
-        # В on_draw:           btn.draw()
-        # В on_mouse_press:    if btn.is_hovered: do_something()
-    """
-
     def __init__(
         self,
         cx: float, cy: float,
@@ -57,7 +35,7 @@ class Button:
         bold:       bool  = True,
         text_color: tuple | None = None,
         radius:     int   = 6,
-        subtitle:   str   = "",   # маленькая подпись под текстом
+        subtitle:   str   = "",
     ):
         self.cx, self.cy = cx, cy
         self.w,  self.h  = width, height
@@ -92,13 +70,11 @@ class Button:
         key = self.hover_key if self.is_hovered else self.color_key
         color = COLORS.get(key, COLORS["btn_primary"])
 
-        # Тень
         draw_rounded_rect(self.cx + 2, self.cy - 2, self.w, self.h,
                           (0, 0, 0, 50), self.radius)
-        # Тело
         draw_rounded_rect(self.cx, self.cy, self.w, self.h,
                           color, self.radius)
-        # Контур
+
         draw_rounded_rect_outline(self.cx, self.cy, self.w, self.h,
                                   (0, 0, 0, 40), self.radius)
         self._label.draw()
@@ -106,11 +82,7 @@ class Button:
             self._sub.draw()
 
 
-# ── Panel ─────────────────────────────────────────────────────────
-
 class Panel:
-    """Фоновая панель с тенью."""
-
     def __init__(self, cx: float, cy: float, w: float, h: float,
                  color: tuple = (255, 255, 255, 200), radius: int = 10):
         self.cx, self.cy = cx, cy

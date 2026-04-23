@@ -1,4 +1,3 @@
-"""🧬 Эволюция — точка входа."""
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, FPS
 from src.ui.start_screen import StartView
@@ -13,8 +12,8 @@ class EvolutionGame(arcade.Window):
 
 
 def main() -> None:
-    print("🚀 Эволюция запускается…")
-    print("🎮 ← ↑ → ↓ — ходы  |  R — рестарт  |  M — музыка  |  ESC — меню")
+    print("Эволюция запускается…")
+    print("← ↑ → ↓ — ходы  |  R — рестарт  |  M — музыка  |  ESC — меню")
     EvolutionGame()
     arcade.run()
 

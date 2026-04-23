@@ -1,4 +1,3 @@
-"""Игровые режимы: определение, конфигурация, список."""
 from enum import Enum
 from dataclasses import dataclass
 from config import (
@@ -8,24 +7,22 @@ from config import (
 
 
 class GameMode(Enum):
-    CLASSIC  = "classic"    # Таймер + бонусы за слияния
-    TIMED    = "timed"      # Таймер без бонусов
-    INFINITE = "infinite"   # Без таймера
+    CLASSIC  = "classic"
+    TIMED    = "timed"
+    INFINITE = "infinite"
 
 
 @dataclass(frozen=True)
 class ModeConfig:
     mode:           GameMode
-    label:          str       # Русское название
-    description:    str       # Краткое описание для UI
-    emoji:          str       # Иконка
-    initial_time:   float     # 0 → нет таймера
-    time_per_merge: float     # секунд бонуса за одно слияние
-    merge_time_cap: int       # макс. слияний, дающих бонус (0 → нет)
-    accent_color:   str       # ключ в COLORS для акцентного цвета
+    label:          str
+    description:    str
+    emoji:          str
+    initial_time:   float
+    time_per_merge: float
+    merge_time_cap: int
+    accent_color:   str
 
-
-# Единственный источник правды о режимах
 MODE_CONFIGS: dict[GameMode, ModeConfig] = {
     GameMode.CLASSIC: ModeConfig(
         mode           = GameMode.CLASSIC,

@@ -1,6 +1,3 @@
-"""
-Экран выбора режима + карты (Tiled TMX).
-"""
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
 from src.ui.widgets import Button
@@ -10,7 +7,6 @@ from src.game.grid_layout import compute_layout
 from src.game.cell_types import CellType
 
 
-# Цвета для миниатюр клеток
 _CELL_PREVIEW_COLORS = {
     CellType.EMPTY:   (230, 215, 185),
     CellType.WALL:    ( 70,  55,  45),
@@ -21,8 +17,6 @@ _CELL_PREVIEW_COLORS = {
 
 
 class ModeSelectView(arcade.View):
-    """Шаг 1 — выбор режима."""
-
     def __init__(self):
         super().__init__()
         cx  = SCREEN_WIDTH  // 2
@@ -84,14 +78,11 @@ class ModeSelectView(arcade.View):
 
 
 class MapSelectView(arcade.View):
-    """Шаг 2 — выбор карты."""
-
     def __init__(self, mode_cfg: ModeConfig, maps: list[MapConfig]):
         super().__init__()
         self._mode_cfg = mode_cfg
         self._maps = maps if maps else [DEFAULT_MAP]
 
-        # Пейджинг: 6 карт на страницу
         self._per_page = 6
         self._page = 0
 
@@ -111,7 +102,6 @@ class MapSelectView(arcade.View):
 
         card_w, card_h, gap = 180, 160, 14
         cols = min(3, len(page_maps))
-        rows = (len(page_maps) + cols - 1) // cols
 
         total_w = cols * card_w + (cols - 1) * gap
         x0 = cx - total_w // 2 + card_w // 2
@@ -172,8 +162,6 @@ class MapSelectView(arcade.View):
             self.window.show_view(ModeSelectView())
 
 
-# ── Старт игры ────────────────────────────────────────────────
-
 def _start_game(window, mode_cfg: ModeConfig, map_cfg: MapConfig) -> None:
     from src.ui.game_screen import GameView
     layout = compute_layout(map_cfg.rows, map_cfg.cols)
@@ -181,8 +169,6 @@ def _start_game(window, mode_cfg: ModeConfig, map_cfg: MapConfig) -> None:
     view.setup()
     window.show_view(view)
 
-
-# ── Базовая карточка ──────────────────────────────────────────
 
 class _BaseCard:
     def __init__(self, cx, cy, w, h):
@@ -233,8 +219,6 @@ class _ModeCard(_BaseCard):
 
 
 class _MapCard(_BaseCard):
-    """Превью карты с миниатюрой клеточного грида."""
-
     def __init__(self, cx, cy, w, h, map_cfg: MapConfig):
         super().__init__(cx, cy, w, h)
         self.map_cfg = map_cfg
@@ -263,13 +247,13 @@ class _MapCard(_BaseCard):
         r, c = self.map_cfg.rows, self.map_cfg.cols
         cell = min(int(60 / max(r, c)), 12)
         gw, gh = c * cell, r * cell
-        x0, y0 = cx - gw/2, cy + gh/2      # верхний-левый угол превью
+        x0, y0 = cx - gw/2, cy + gh/2
         for ri in range(r):
             for ci in range(c):
                 ct = self.map_cfg.cells[ri][ci]
                 color = _CELL_PREVIEW_COLORS.get(ct, (220, 210, 180))
                 x = x0 + ci * cell
-                y = y0 - ri * cell            # рисуем сверху вниз
+                y = y0 - ri * cell
                 arcade.draw_lrbt_rectangle_filled(
                     x + 1, x + cell - 1, y - cell + 1, y - 1,
                     color)
