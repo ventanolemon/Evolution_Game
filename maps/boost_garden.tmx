@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="5" height="5" tilewidth="64" tileheight="64" infinite="0" nextlayerid="2" nextobjectid="1">
+ <properties>
+  <property name="id" value="boost_garden"/>
+  <property name="name" value="Сад эволюции"/>
+  <property name="description" value="Апгрейдеры помогают быстро продвинуться"/>
+ </properties>
+ <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
+ <layer id="1" name="cells" width="5" height="5">
+  <data encoding="csv">
+0,0,0,0,0,
+0,3,0,3,0,
+0,0,1,0,0,
+0,3,0,3,0,
+0,0,0,0,0
+</data>
+ </layer>
+</map>

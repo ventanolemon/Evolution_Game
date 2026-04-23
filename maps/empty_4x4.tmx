@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="4" height="4" tilewidth="64" tileheight="64" infinite="0" nextlayerid="2" nextobjectid="1">
+ <properties>
+  <property name="id" value="empty_4x4"/>
+  <property name="name" value="Обычное поле"/>
+  <property name="description" value="Классика 4×4 без спецклеток"/>
+ </properties>
+ <tileset firstgid="1" source="tilesets/special_cells.tsx"/>
+ <layer id="1" name="cells" width="4" height="4">
+  <data encoding="csv">
+0,0,0,0,
+0,0,0,0,
+0,0,0,0,
+0,0,0,0
+</data>
+ </layer>
+</map>
