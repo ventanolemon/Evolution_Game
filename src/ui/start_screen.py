@@ -1,8 +1,7 @@
 """Главное меню."""
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
-from src.ui.widgets import Button, Panel
-from src.utils.save_manager import manager as save_manager
+from src.ui.widgets import Button
 
 
 class StartView(arcade.View):

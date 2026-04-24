@@ -1,13 +1,3 @@
-"""
-Игровое поле с поддержкой специальных клеток (стена/огонь/апгрейд/деградация).
-
-Ключевые механики:
-  — Стена полностью блокирует линию сдвига: ряд/столбец разбивается
-    на независимые сегменты, каждый обрабатывается отдельно.
-  — Огонь/апгрейд/деградация применяются к плитке, когда та ОСТАНАВЛИВАЕТСЯ
-    на клетке. После применения клетка превращается в EMPTY (одноразовая).
-  — Плитка на стадии 0, попавшая на деградатор, уничтожается.
-"""
 import random
 import arcade
 from typing import Callable, Optional
@@ -23,13 +13,6 @@ SoundCallback = Callable[[str, float], None]
 
 
 class GameBoard:
-    """
-    layout   → GridLayout для размеров поля
-    mode_cfg → режим (таймер, бонусы)
-    map_cfg  → карта (клеточный грид)
-    sound_cb → колбэк звука
-    """
-
     def __init__(self,
                  layout:   Optional[GridLayout] = None,
                  mode_cfg: Optional[ModeConfig] = None,
@@ -70,20 +53,16 @@ class GameBoard:
     @property
     def cols(self) -> int: return self._layout.cols
 
-    # ── Клетки ────────────────────────────────────────────────
 
     def cell_at(self, row: int, col: int) -> CellType:
         if 0 <= row < self.rows and 0 <= col < self.cols:
             return self._cells[row][col]
-        return CellType.WALL   # за границей — считаем стеной
+        return CellType.WALL
 
     def _is_wall(self, row: int, col: int) -> bool:
         return self.cell_at(row, col) == CellType.WALL
 
-    # ── Плитки ────────────────────────────────────────────────
-
     def add_random_tile(self, animate: bool = True) -> bool:
-        """Ставит случайную плитку в любую пустую клетку (кроме стен)."""
         empty = [
             (r, c)
             for r in range(self.rows) for c in range(self.cols)
@@ -93,7 +72,7 @@ class GameBoard:
         if not empty:
             return False
         row, col = random.choice(empty)
-        stage    = 0 if random.random() < 0.9 else 1
+        stage    = 0 if random.random() < 0.9 else 1  # 10% шанс появления Рыбы вместо Амёбы
         tile     = EvolutionTile(stage, row, col,
                                  layout=self._layout,
                                  animate_spawn=animate)
@@ -101,22 +80,13 @@ class GameBoard:
         self.tile_dict[f"{row}{col}"] = tile
         return True
 
-    # ── Сегменты для сдвига ───────────────────────────────────
-
     def _collect_segments(self, direction: str, index: int
                           ) -> list[tuple[list[EvolutionTile], list[tuple[int, int]]]]:
-        """
-        Возвращает список сегментов: [(tiles, target_positions), ...]
-        Стены разрывают линию на сегменты. В каждом сегменте tiles и
-        target_positions упорядочены по направлению сдвига: первая плитка
-        списка окажется на первой позиции сегмента.
-        """
         segments: list[tuple[list[EvolutionTile], list[tuple[int, int]]]] = []
         cur_tiles: list[EvolutionTile] = []
         cur_slots: list[tuple[int, int]] = []
 
         def finalize() -> None:
-            # Сегмент добавляем, только если в нём есть хотя бы один слот
             if cur_slots:
                 segments.append((cur_tiles.copy(), cur_slots.copy()))
             cur_tiles.clear()
@@ -125,6 +95,8 @@ class GameBoard:
         horizontal = direction in ("left", "right")
         if horizontal:
             row = index
+            # Обход идёт в сторону сдвига: при движении влево — слева направо,
+            # чтобы первой в сегменте оказалась плитка, которая ляжет ближе к стенке.
             seq = range(self.cols) if direction == "left" else reversed(range(self.cols))
             for c in seq:
                 if self._is_wall(row, c):
@@ -150,20 +122,20 @@ class GameBoard:
 
     def _process_segment(self, tiles: list[EvolutionTile],
                          target_slots: list[tuple[int, int]]) -> bool:
-        """Сливает и размещает плитки в target_slots."""
         if not tiles:
             return False
 
         changed = False
+        # Защита от цепного слияния: одна плитка не может слиться дважды за ход.
         merged_keys: set[str] = set()
         result: list[EvolutionTile] = []
 
-        # Шаг 1: слияния одинаковых соседей
         for tile in tiles:
             if result:
                 last = result[-1]
                 if tile.can_merge_with(last) and last.get_key() not in merged_keys:
                     last.upgrade()
+                    # stage_index уже увеличен, поэтому отражает новую стадию.
                     self.score += 2 ** (last.stage_index + 1)
                     self.merges_this_move += 1
                     merged_keys.add(last.get_key())
@@ -175,7 +147,6 @@ class GameBoard:
                     continue
             result.append(tile)
 
-        # Шаг 2: сдвиги в таргет-позиции сегмента
         for idx, tile in enumerate(result):
             if tile._marked_for_removal:
                 continue
@@ -215,12 +186,12 @@ class GameBoard:
             if getattr(tile, "_marked_for_removal", False):
                 tile.remove_from_sprite_lists()
 
-    # ── Завершение хода ───────────────────────────────────────
-
     def _try_finish_move(self) -> None:
         if not self.spawn_pending or not self.input_locked:
             return
         self.wait_counter += 1
+        # Страховочный таймаут: если анимации зависли и не завершились,
+        # принудительно заканчиваем ход через max_wait_frames кадров.
         if self.wait_counter >= self.max_wait_frames:
             self._finish_move()
             return
@@ -229,11 +200,6 @@ class GameBoard:
             self._finish_move()
 
     def _apply_cell_effects(self) -> None:
-        """
-        Применяет эффекты клеток ко всем плиткам, остановившимся на них.
-        После применения клетка становится EMPTY (одноразовая).
-        Заполняет self.cell_events для UI (для спавна частиц).
-        """
         used_cells: list[tuple[int, int]] = []
 
         for tile in list(self.tile_dict.values()):
@@ -276,20 +242,17 @@ class GameBoard:
                 used_cells.append((tile.row, tile.col))
                 self._play("move", 0.4)
 
-        # Гасим использованные клетки
         for r, c in used_cells:
             self._cells[r][c] = CellType.EMPTY
 
         self._cleanup_removed()
 
     def _finish_move(self) -> None:
-        # Бонус времени
         if self._mode.time_per_merge > 0 and self._mode.initial_time > 0:
             capped      = min(self.merges_this_move, self._mode.merge_time_cap)
             self.timer += capped * self._mode.time_per_merge
         self.merges_this_move = 0
 
-        # Эффекты клеток
         self._apply_cell_effects()
 
         self.add_random_tile(animate=True)
@@ -298,7 +261,6 @@ class GameBoard:
         self.input_locked  = False
         self.wait_counter  = 0
 
-    # ── Проверка состояния ────────────────────────────────────
 
     def _check_game_state(self) -> None:
         if not self.tile_dict:
@@ -309,7 +271,7 @@ class GameBoard:
             self._play("win", 0.9)
             return
 
-        # Клетки, в которые можно поставить тайл
+        # Стены не считаются: нужно сравнивать плитки только с доступными клетками.
         placeable = sum(
             1
             for r in range(self.rows) for c in range(self.cols)
@@ -321,26 +283,23 @@ class GameBoard:
             self._play("lose", 0.6)
 
     def _has_moves(self) -> bool:
-        """Проверяет, возможен ли хотя бы один продуктивный ход."""
-        # 1. Есть клетки с эффектами под плитками — это всегда даст изменение
+        # Плитка на спецклетке даёт «ход»: после сдвига что-то изменится.
         for tile in self.tile_dict.values():
             if self._cells[tile.row][tile.col] != CellType.EMPTY:
                 return True
 
-        # 2. Есть соседи для слияния (учитывая стены между ними)
         for tile in self.tile_dict.values():
             for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
                 nr, nc = tile.row + dr, tile.col + dc
                 if not (0 <= nr < self.rows and 0 <= nc < self.cols):
                     continue
+                # Стена между соседями разрывает сегмент — слияния через неё нет.
                 if self._cells[nr][nc] == CellType.WALL:
                     continue
                 nb = self.tile_dict.get(f"{nr}{nc}")
                 if nb and tile.can_merge_with(nb):
                     return True
         return False
-
-    # ── Сброс ─────────────────────────────────────────────────
 
     def reset(self) -> None:
         self.tiles     = arcade.SpriteList(use_spatial_hash=True)
