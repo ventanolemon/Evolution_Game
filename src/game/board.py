@@ -13,6 +13,13 @@ SoundCallback = Callable[[str, float], None]
 
 
 class GameBoard:
+    """
+    layout   → GridLayout для размеров поля
+    mode_cfg → режим (таймер, бонусы)
+    map_cfg  → карта (клеточный грид)
+    sound_cb → колбэк звука
+    """
+
     def __init__(self,
                  layout:   Optional[GridLayout] = None,
                  mode_cfg: Optional[ModeConfig] = None,
@@ -62,6 +69,8 @@ class GameBoard:
     def _is_wall(self, row: int, col: int) -> bool:
         return self.cell_at(row, col) == CellType.WALL
 
+    # ── Плитки ────────────────────────────────────────────────
+
     def add_random_tile(self, animate: bool = True) -> bool:
         empty = [
             (r, c)
@@ -72,13 +81,15 @@ class GameBoard:
         if not empty:
             return False
         row, col = random.choice(empty)
-        stage    = 0 if random.random() < 0.9 else 1  # 10% шанс появления Рыбы вместо Амёбы
+        stage    = 0 if random.random() < 0.9 else 1
         tile     = EvolutionTile(stage, row, col,
                                  layout=self._layout,
                                  animate_spawn=animate)
         self.tiles.append(tile)
         self.tile_dict[f"{row}{col}"] = tile
         return True
+
+    # ── Сегменты для сдвига ───────────────────────────────────
 
     def _collect_segments(self, direction: str, index: int
                           ) -> list[tuple[list[EvolutionTile], list[tuple[int, int]]]]:
@@ -95,8 +106,6 @@ class GameBoard:
         horizontal = direction in ("left", "right")
         if horizontal:
             row = index
-            # Обход идёт в сторону сдвига: при движении влево — слева направо,
-            # чтобы первой в сегменте оказалась плитка, которая ляжет ближе к стенке.
             seq = range(self.cols) if direction == "left" else reversed(range(self.cols))
             for c in seq:
                 if self._is_wall(row, c):
@@ -126,7 +135,6 @@ class GameBoard:
             return False
 
         changed = False
-        # Защита от цепного слияния: одна плитка не может слиться дважды за ход.
         merged_keys: set[str] = set()
         result: list[EvolutionTile] = []
 
@@ -135,7 +143,6 @@ class GameBoard:
                 last = result[-1]
                 if tile.can_merge_with(last) and last.get_key() not in merged_keys:
                     last.upgrade()
-                    # stage_index уже увеличен, поэтому отражает новую стадию.
                     self.score += 2 ** (last.stage_index + 1)
                     self.merges_this_move += 1
                     merged_keys.add(last.get_key())
@@ -190,8 +197,6 @@ class GameBoard:
         if not self.spawn_pending or not self.input_locked:
             return
         self.wait_counter += 1
-        # Страховочный таймаут: если анимации зависли и не завершились,
-        # принудительно заканчиваем ход через max_wait_frames кадров.
         if self.wait_counter >= self.max_wait_frames:
             self._finish_move()
             return
@@ -271,7 +276,6 @@ class GameBoard:
             self._play("win", 0.9)
             return
 
-        # Стены не считаются: нужно сравнивать плитки только с доступными клетками.
         placeable = sum(
             1
             for r in range(self.rows) for c in range(self.cols)
@@ -283,7 +287,6 @@ class GameBoard:
             self._play("lose", 0.6)
 
     def _has_moves(self) -> bool:
-        # Плитка на спецклетке даёт «ход»: после сдвига что-то изменится.
         for tile in self.tile_dict.values():
             if self._cells[tile.row][tile.col] != CellType.EMPTY:
                 return True
@@ -293,7 +296,6 @@ class GameBoard:
                 nr, nc = tile.row + dr, tile.col + dc
                 if not (0 <= nr < self.rows and 0 <= nc < self.cols):
                     continue
-                # Стена между соседями разрывает сегмент — слияния через неё нет.
                 if self._cells[nr][nc] == CellType.WALL:
                     continue
                 nb = self.tile_dict.get(f"{nr}{nc}")

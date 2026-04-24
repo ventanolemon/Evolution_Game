@@ -1,24 +1,12 @@
-"""
-Анимированный экран победы с конфетти на физическом движке.
-
-Изменения (v2):
-  — Конфетти реализованы как arcade.SpriteSolidColor, а не рисуются
-    вручную через draw_polygon_filled.
-  — Каждая частица получает свой arcade.PhysicsEngineSimple с невидимым
-    полом (floor_wall) — движок обрабатывает гравитацию и отскок.
-  — Гравитация применяется вручную через change_y; движок отвечает за
-    обнаружение коллизии спрайта с полом и сброс change_y при отскоке.
-"""
 import math
 import random
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
 from src.ui.widgets import Button
 
-# Константы физики конфетти
-_GRAVITY     = 0.25   # пикселей/кадр² убывания change_y
-_BOUNCE      = 0.35   # коэффициент отскока (0 = нет отскока, 1 = упругий)
-_FLOOR_Y     = 5      # y-координата пола
+_GRAVITY = 0.25
+_BOUNCE = 0.35
+_FLOOR_Y = 5
 
 _CONFETTI_COLORS = [
     (255, 215,   0),
@@ -31,12 +19,6 @@ _CONFETTI_COLORS = [
 
 
 class ConfettiSprite(arcade.SpriteSolidColor):
-    """
-    Одна конфетти-частица — полноценный arcade.Sprite.
-    Физику (гравитацию + коллизию с полом) обеспечивает
-    arcade.PhysicsEngineSimple в WinOverlay.
-    """
-
     def __init__(self, start_y_min: float = SCREEN_HEIGHT,
                        start_y_max: float = SCREEN_HEIGHT + 200):
         color = (*random.choice(_CONFETTI_COLORS), 255)

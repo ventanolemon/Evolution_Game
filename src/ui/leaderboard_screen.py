@@ -1,11 +1,8 @@
-"""
-Экран таблицы лидеров с фильтрацией по режиму.
-"""
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
-from src.ui.widgets import Button, Panel
+from src.ui.widgets import Button
 from src.utils.save_manager import manager as save_manager
-from src.game.modes import GameMode, MODE_CONFIGS
+from src.game.modes import GameMode
 
 
 _MODE_LABELS = {
@@ -44,19 +41,14 @@ class LeaderboardView(arcade.View):
         self._rows = save_manager.get_scores(mode=mode_str, limit=15)
         self._scroll = 0
 
-    # ── Жизненный цикл ────────────────────────────────────────
-
     def on_show_view(self) -> None:
         arcade.set_background_color(COLORS["background"])
         self._refresh()
-
-    # ── Отрисовка ─────────────────────────────────────────────
 
     def on_draw(self) -> None:
         self.clear()
         cx = SCREEN_WIDTH // 2
 
-        # Шапка
         arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH,
                                           SCREEN_HEIGHT - 70, SCREEN_HEIGHT,
                                           (220, 200, 170, 220))
@@ -64,7 +56,6 @@ class LeaderboardView(arcade.View):
                          COLORS["text_dark"], 22, bold=True,
                          anchor_x="center", anchor_y="center")
 
-        # Кнопки фильтров
         for i, btn in enumerate(self._filter_btns):
             if i == self._filter_idx:
                 # Подчёркиваем активный
@@ -74,7 +65,6 @@ class LeaderboardView(arcade.View):
                                  COLORS["btn_primary"], 3)
             btn.draw()
 
-        # Таблица
         if not self._rows:
             arcade.draw_text("Пока нет результатов.\nСыграй и попади в таблицу!",
                              cx, SCREEN_HEIGHT // 2,
@@ -87,12 +77,9 @@ class LeaderboardView(arcade.View):
         self._back_btn.draw()
 
     def _draw_table(self) -> None:
-        """Рисует строки таблицы."""
-        cx = SCREEN_WIDTH // 2
         y_top = SCREEN_HEIGHT - 105
         row_h = 36
 
-        # Заголовок колонок
         cols = [("#", 30), ("Игрок", 160), ("Режим", 110),
                 ("Очки", 80), ("Дата", 130)]
         x = 18
@@ -109,7 +96,6 @@ class LeaderboardView(arcade.View):
             if y < 55:
                 break
 
-            # Чередующийся фон
             bg = (240, 232, 215, 120) if i % 2 == 0 else (0, 0, 0, 0)
             arcade.draw_lrbt_rectangle_filled(
                 18, SCREEN_WIDTH - 18, y - row_h//2, y + row_h//2 - 2, bg)
@@ -137,8 +123,6 @@ class LeaderboardView(arcade.View):
                                  anchor_x="center", anchor_y="center",
                                  bold=(j == 3))
                 x += w
-
-    # ── Управление ────────────────────────────────────────────
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if self._back_btn.contains(x, y):

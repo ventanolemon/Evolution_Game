@@ -1,4 +1,3 @@
-"""Главное меню."""
 import arcade
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, COLORS
 from src.ui.widgets import Button
@@ -21,19 +20,14 @@ class StartView(arcade.View):
                                 width=240, height=36,
                                 color_key="btn_danger", font_size=14)
 
-    # ── Жизненный цикл ────────────────────────────────────────
-
     def on_show_view(self) -> None:
         arcade.set_background_color(COLORS["background"])
-
-    # ── Отрисовка ─────────────────────────────────────────────
 
     def on_draw(self) -> None:
         self.clear()
         cx  = SCREEN_WIDTH  // 2
         cy  = SCREEN_HEIGHT // 2
 
-        # Заголовок
         arcade.draw_text("🧬 ЭВОЛЮЦИЯ", cx, cy + 155,
                          COLORS["text_dark"], 48, bold=True,
                          anchor_x="center", anchor_y="center")
@@ -41,7 +35,6 @@ class StartView(arcade.View):
                          cx, cy + 105, COLORS["text_gray"], 16,
                          anchor_x="center", anchor_y="center")
 
-        # Разделитель
         arcade.draw_line(cx - 130, cy + 80, cx + 130, cy + 80,
                          COLORS["grid_line"], 1)
 
@@ -52,8 +45,6 @@ class StartView(arcade.View):
         arcade.draw_text("ПРОБЕЛ — начать  •  ESC — выход",
                          cx, 18, COLORS["text_gray"], 11,
                          anchor_x="center", anchor_y="center")
-
-    # ── Управление ────────────────────────────────────────────
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
         for btn in (self._btn_play, self._btn_lb, self._btn_quit):
@@ -72,8 +63,6 @@ class StartView(arcade.View):
             self._go_mode_select()
         elif key == arcade.key.ESCAPE:
             arcade.exit()
-
-    # ── Навигация ─────────────────────────────────────────────
 
     def _go_mode_select(self) -> None:
         from src.ui.mode_select import ModeSelectView

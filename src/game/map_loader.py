@@ -1,24 +1,3 @@
-"""
-Загрузчик карт Tiled (формат TMX).
-
-Формат:
-  — ортогональная карта (orientation="orthogonal")
-  — один слой "cells" в CSV-encoding
-  — тайлсет ссылкой (<tileset source="..."/>) с custom-property "type"
-    у каждого тайла: wall | fire | upgrade | degrade
-
-Custom-properties карты (<map><properties>...):
-  id, name, description — читаются и попадают в MapConfig.
-
-Как создать карту в Tiled:
-  1. Файл → Новая карта: ортогональная, размер 4×4…8×8, тайл 64×64
-     Формат слоя тайлов: CSV
-  2. Карта → Свойства карты → добавить string-свойства id/name/description
-  3. Карта → Добавить внешний тайлсет → выбрать maps/tilesets/special_cells.tsx
-  4. Добавить слой тайлов с точным именем "cells"
-  5. Рисовать стены/огонь/апгрейдеры/деградаторы где нужно
-  6. Сохранить как .tmx в папку maps/
-"""
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from dataclasses import dataclass
@@ -46,10 +25,7 @@ class MapValidationError(Exception):
     pass
 
 
-# ── Парсинг внешнего тайлсета (.tsx) ──────────────────────────
-
 def _parse_tileset(tsx_path: Path, firstgid: int) -> dict[int, CellType]:
-    """Читает .tsx и возвращает словарь GID → CellType."""
     try:
         tree = ET.parse(tsx_path)
     except (ET.ParseError, OSError) as exc:
@@ -72,10 +48,7 @@ def _parse_tileset(tsx_path: Path, firstgid: int) -> dict[int, CellType]:
     return gid_to_type
 
 
-# ── Парсинг TMX ───────────────────────────────────────────────
-
 def _parse_tmx(path: Path) -> MapConfig:
-    """Основной парсер. Бросает MapValidationError при проблемах."""
     try:
         tree = ET.parse(path)
     except ET.ParseError as exc:
@@ -85,7 +58,6 @@ def _parse_tmx(path: Path) -> MapConfig:
     if root.tag != "map":
         raise MapValidationError(f"{path.name}: корневой элемент не <map>")
 
-    # ── Размеры ──────────────────────────────────────────────
     try:
         rows = int(root.attrib["height"])
         cols = int(root.attrib["width"])
@@ -97,7 +69,6 @@ def _parse_tmx(path: Path) -> MapConfig:
     if not (COLS_RANGE[0] <= cols <= COLS_RANGE[1]):
         raise MapValidationError(f"{path.name}: cols={cols} вне {COLS_RANGE}")
 
-    # ── GID → CellType из всех тайлсетов ─────────────────────
     gid_to_type: dict[int, CellType] = {}
     for ts_elem in root.findall("tileset"):
         firstgid = int(ts_elem.attrib.get("firstgid", 1))
@@ -106,7 +77,6 @@ def _parse_tmx(path: Path) -> MapConfig:
             ts_path = path.parent / source
             gid_to_type.update(_parse_tileset(ts_path, firstgid))
         else:
-            # Встроенный тайлсет
             for tile in ts_elem.findall("tile"):
                 tile_id = int(tile.attrib["id"])
                 for prop in tile.findall("properties/property"):
@@ -118,7 +88,6 @@ def _parse_tmx(path: Path) -> MapConfig:
                             raise MapValidationError(
                                 f"{path.name}: неизвестный тип '{val}'")
 
-    # ── Слой "cells" ──────────────────────────────────────────
     cells_layer = None
     for layer in root.findall("layer"):
         if layer.attrib.get("name") == "cells":
@@ -139,7 +108,6 @@ def _parse_tmx(path: Path) -> MapConfig:
             f"{path.name}: поддерживается только CSV-кодировка слоя. "
             "В Tiled: Правка → Настройки → Формат слоя тайлов = CSV.")
 
-    # ── CSV ───────────────────────────────────────────────────
     text = (data.text or "").strip()
     grid: list[list[CellType]] = []
     for line in text.split("\n"):
@@ -170,7 +138,6 @@ def _parse_tmx(path: Path) -> MapConfig:
         raise MapValidationError(
             f"{path.name}: CSV содержит {len(grid)} строк, ожидается {rows}")
 
-    # ── Custom-properties карты ───────────────────────────────
     props: dict[str, str] = {}
     for prop in root.findall("properties/property"):
         props[prop.attrib["name"]] = prop.attrib.get("value", "")
@@ -185,10 +152,7 @@ def _parse_tmx(path: Path) -> MapConfig:
     )
 
 
-# ── Публичные функции ────────────────────────────────────────
-
 def load_map(path: Path) -> Optional[MapConfig]:
-    """Загружает одну карту. Ошибки логируются, возвращает None."""
     try:
         return _parse_tmx(path)
     except MapValidationError as exc:
@@ -200,7 +164,6 @@ def load_map(path: Path) -> Optional[MapConfig]:
 
 
 def load_all_maps() -> list[MapConfig]:
-    """Загружает все .tmx из папки maps/."""
     if not MAPS_DIR.exists():
         MAPS_DIR.mkdir(exist_ok=True)
         return [DEFAULT_MAP]
@@ -215,7 +178,6 @@ def load_all_maps() -> list[MapConfig]:
     return maps
 
 
-# Fallback
 DEFAULT_MAP = MapConfig(
     id          = "default_4x4",
     name        = "Обычное поле",
