@@ -17,6 +17,8 @@ class GridLayout:
     grid_h:    float
 
     def cell_center(self, row: float, col: float) -> tuple[float, float]:
+        # origin_x — левый край сетки, origin_y — верхний
+        # row растёт вниз
         x = self.origin_x + col * self.cell_step + self.tile_size // 2
         y = self.origin_y - row * self.cell_step - self.tile_size // 2
         return x, y

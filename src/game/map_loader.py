@@ -71,6 +71,7 @@ def _parse_tmx(path: Path) -> MapConfig:
 
     gid_to_type: dict[int, CellType] = {}
     for ts_elem in root.findall("tileset"):
+        # firstgid — смещение GID этого тайлсета по карте
         firstgid = int(ts_elem.attrib.get("firstgid", 1))
         source   = ts_elem.attrib.get("source")
         if source:
@@ -122,6 +123,7 @@ def _parse_tmx(path: Path) -> MapConfig:
                 raise MapValidationError(
                     f"{path.name}: некорректный GID '{token}' в CSV")
             if gid == 0:
+                # GID — пустая клетка
                 row_cells.append(CellType.EMPTY)
             else:
                 ct = gid_to_type.get(gid)

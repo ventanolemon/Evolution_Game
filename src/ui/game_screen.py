@@ -15,12 +15,11 @@ from src.game.map_loader import MapConfig, DEFAULT_MAP
 from src.ui.hud import draw_hud, draw_game_over_overlay
 from src.ui.win_screen import WinOverlay
 
-_SHAKE_DURATION  = 0.45   # секунд
+_SHAKE_DURATION  = 0.45
 _SHAKE_AMPLITUDE = 9.0    # пикселей в начале тряски
-# За одну секунду амплитуда упадёт до нуля: AMPLITUDE / DECAY ≈ 0.41 с < DURATION.
 _SHAKE_DECAY     = 22.0
 
-_AURA_INTERVAL   = 0.5    # как часто проверять collide спецклеток (в сек)
+_AURA_INTERVAL   = 0.5    # как часто проверять collide спецклеток
 
 _cell_textures: dict[CellType, arcade.Texture] = {}
 for ct, path in CELL_SPRITES.items():
@@ -46,7 +45,7 @@ class GameView(arcade.View):
         self._layout   = layout   or compute_layout(self._map_cfg.rows, self._map_cfg.cols)
 
         # board создаётся один раз в setup(), чтобы при рестарте не пересоздавать объект.
-        self.board:     GameBoard      = None   # type: ignore
+        self.board:     GameBoard      = None
         self.particles: ParticleSystem = ParticleSystem()
 
         self._cell_sprites: arcade.SpriteList = arcade.SpriteList()
@@ -57,8 +56,7 @@ class GameView(arcade.View):
         self._win_overlay: WinOverlay | None = None
         self._notif_queue: list[list] = []
 
-        # Две камеры: game_camera может трястись, ui_camera всегда стабильна —
-        # счёт и таймер не дёргаются при проигрыше.
+        # Две камеры: game_camera может трястись, ui_camera всегда стабильна
         self._game_camera = arcade.Camera2D()
         self._ui_camera   = arcade.Camera2D()
 
@@ -158,7 +156,6 @@ class GameView(arcade.View):
         arcade.set_background_color(COLORS["background"])
 
     def on_hide_view(self) -> None:
-        # Останавливаем музыку при уходе с экрана, чтобы она не играла в меню.
         self._stop_music()
 
     def on_draw(self) -> None:
@@ -188,8 +185,7 @@ class GameView(arcade.View):
         if self._win_overlay:
             self._win_overlay.draw()
         elif self.board.game_over:
-            draw_game_over_overlay(False, self.board.lose_reason,
-                                   self.board.score)
+            draw_game_over_overlay(self.board.lose_reason, self.board.score)
         self._draw_notifications()
 
     def _draw_grid(self) -> None:
@@ -252,7 +248,7 @@ class GameView(arcade.View):
         for item in self._notif_queue[:3]:
             ach = item[0]
             t   = item[1]
-            # Плавное появление и исчезновение: нарастает первые 0.25 с, убывает последние 0.25 с.
+            # Плавное появление и исчезновение
             alpha = max(0, int(255 * min(1.0, min(t, self.NOTIF_DURATION - t) * 4)))
             arcade.draw_lrbt_rectangle_filled(
                 cx - 190, cx + 190, y - 22, y + 22,
@@ -288,7 +284,7 @@ class GameView(arcade.View):
                     }.get(ev["type"], (200, 200, 200))
                     self.particles.emit(ev["x"], ev["y"], color, count=18)
                 b.cell_events.clear()
-                # Спецклетки израсходованы — перестраиваем спрайты, чтобы убрать исчезнувшие.
+                # Убрать израсходованные спецклетки.
                 self._rebuild_cell_sprites()
 
             if self._mode_cfg.initial_time > 0:
@@ -304,12 +300,12 @@ class GameView(arcade.View):
                 self._aura_timer = 0.0
                 self._emit_cell_aura()
 
-            # Проверяем достижения не каждый кадр, а раз в ~0.2 с (каждые 2 единицы * 0.1).
+            # Проверка достижений
             if int(b.session_time * 10) % 20 == 0:
                 for a in ach_manager.check(b):
                     self._notif_queue.append([a, self.NOTIF_DURATION])
 
-        # _was_game_over — флаг, чтобы тряска стартовала ровно один раз, а не каждый кадр.
+        # Начало тряски
         if b.game_over and not self._was_game_over:
             self._was_game_over   = True
             self._shake_timer     = _SHAKE_DURATION
@@ -336,8 +332,7 @@ class GameView(arcade.View):
             CellType.DEGRADE: (220, 80,  80),
         }
         for tile in self.board.tiles:
-            # Движущуюся плитку пропускаем: её логическая позиция ещё не совпадает
-            # с пикселями спрайта клетки, коллизия дала бы ложное срабатывание.
+            # Движущуюся плитку пропускаем
             if tile._marked_for_removal or tile.is_moving:
                 continue
             hits = arcade.check_for_collision_with_list(tile, self._cell_sprites)

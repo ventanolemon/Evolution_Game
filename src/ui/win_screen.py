@@ -29,7 +29,7 @@ class ConfettiSprite(arcade.SpriteSolidColor):
         self.center_x    = random.uniform(0, SCREEN_WIDTH)
         self.center_y    = random.uniform(start_y_min, start_y_max)
         self.change_x    = random.uniform(-1.5, 1.5)
-        self.change_y    = random.uniform(-4.0, -1.5)
+        self.change_y    = random.uniform(-4.0, -1.5)  # отрицательное: частица падает вниз
         self.change_angle = random.uniform(-3.5, 3.5)
 
     @property
@@ -58,6 +58,8 @@ class WinOverlay:
         self._spawn_acc = 0.0
 
         # ── Невидимый пол для физического движка ──────────────
+        # Ширина втрое больше экрана — конфетти не «провалятся» через край пола
+        # при отскоке у левой или правой границы.
         floor = arcade.SpriteSolidColor(
             width=SCREEN_WIDTH * 3, height=10,
             color=(0, 0, 0, 0),
@@ -111,19 +113,19 @@ class WinOverlay:
         # Применяем гравитацию вручную + обновляем физику
         for sp, engine in zip(self._confetti_list, self._engines):
             sp.change_y -= _GRAVITY
-            # При касании пола — имитируем отскок
+            # PhysicsEngineSimple не знает о гравитации — она применяется вручную.
+            # Отскок проверяем до engine.update(), иначе движок уже сдвинет спрайт вверх.
             if sp.center_y <= _FLOOR_Y + sp.height / 2 + 2:
                 sp.change_y = abs(sp.change_y) * _BOUNCE
             engine.update()
 
-        # Удаляем мёртвые частицы и соответствующие движки
+        # _confetti_list и _engines — параллельные структуры, синхронизируем удаление.
         alive_pairs = [
             (sp, eng)
             for sp, eng in zip(self._confetti_list, self._engines)
             if sp.alive
         ]
         if len(alive_pairs) < len(self._engines):
-            # Удаляем мёртвые спрайты из SpriteList
             for sp in list(self._confetti_list):
                 if not sp.alive:
                     sp.remove_from_sprite_lists()
@@ -148,7 +150,7 @@ class WinOverlay:
             COLORS["grid_line"], 2,
         )
 
-        # Пульсирующий заголовок
+        # sin даёт плавное колебание ±4% размера; множитель 4 задаёт скорость пульса (~0.6 Гц).
         pulse = 1.0 + 0.04 * math.sin(self._timer * 4)
         arcade.draw_text(
             "🎉 ПОБЕДА! 🎉",

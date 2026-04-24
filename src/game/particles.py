@@ -6,15 +6,16 @@ class Particle:
     def __init__(self, x: float, y: float, color: tuple):
         self.x = x
         self.y = y
-        self.color    = color[:3]   # только RGB
+        self.color    = color[:3]   # только RGB, alpha вычисляется динамически
         self.size     = random.uniform(2, 6)
-        self.speed_x  = random.uniform(-80, 80)   # пикс/сек
+        self.speed_x  = random.uniform(-80, 80)
         self.speed_y  = random.uniform(-80, 80)
         self.lifetime = random.uniform(0.3, 0.7)
         self.age      = 0.0
 
     @property
     def alpha(self) -> int:
+        # Линейное затухание от 255 до 0 за время lifetime.
         return max(0, int(255 * (1.0 - self.age / self.lifetime)))
 
     @property

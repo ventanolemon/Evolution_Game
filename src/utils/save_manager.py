@@ -1,13 +1,7 @@
-"""
-Менеджер локальных результатов (SQLite).
-
-Хранит: имя игрока, режим, счёт, дату, длительность сессии.
-Автоматически обрезает хранилище до MAX_ENTRIES записей на режим.
-Реализован как синглтон-модуль: импортируй и сразу используй `manager`.
-"""
 import sqlite3
 from pathlib import Path
 from datetime import datetime
+
 
 DB_PATH    = Path("data") / "leaderboard.db"
 MAX_ENTRIES = 100   # максимум записей на один режим
@@ -35,11 +29,9 @@ class SaveManager:
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
 
-    # ── Запись ────────────────────────────────────────────────
 
     def save_score(self, player_name: str, mode: str,
                    score: int, duration_sec: float = 0.0) -> None:
-        """Сохраняет результат. После записи обрезает до MAX_ENTRIES."""
         date = datetime.now().strftime("%d.%m.%Y %H:%M")
         with self._connect() as conn:
             conn.execute(
@@ -47,7 +39,9 @@ class SaveManager:
                 " VALUES (?, ?, ?, ?, ?)",
                 (player_name.strip()[:30], mode, score, date, round(duration_sec, 1)),
             )
-            # Убираем записи сверх лимита (оставляем топ по очкам)
+            # Оставляем топ MAX_ENTRIES по очкам внутри режима.
+            # Подзапрос выбирает id записей, которые нужно сохранить,
+            # внешний DELETE убирает всё остальное для этого же mode.
             conn.execute("""
                 DELETE FROM scores
                 WHERE mode = ?
@@ -59,14 +53,8 @@ class SaveManager:
                   )
             """, (mode, mode, MAX_ENTRIES))
 
-    # ── Чтение ────────────────────────────────────────────────
-
     def get_scores(self, mode: str | None = None,
                    limit: int = 20) -> list[dict]:
-        """
-        Возвращает список словарей с полями:
-        rank, player_name, mode, score, date, duration_sec
-        """
         with self._connect() as conn:
             if mode:
                 rows = conn.execute(
@@ -94,9 +82,9 @@ class SaveManager:
         ]
 
     def has_any(self) -> bool:
+        # LIMIT 1 останавливает скан таблицы сразу после первой записи.
         with self._connect() as conn:
             return bool(conn.execute("SELECT 1 FROM scores LIMIT 1").fetchone())
 
 
-# Синглтон — импортируй напрямую
 manager = SaveManager()
